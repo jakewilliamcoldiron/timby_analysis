@@ -1,0 +1,457 @@
+---
+title: "TIMBY Cleaning and EDA"
+author: "Jake William Coldiron"
+output: pdf_document
+date: 22 July 2024
+---
+
+```{r setup, include = FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+library (lattice)
+library(lme4)
+library(janitor)
+library(snakecase)
+library(dplyr)
+library(patchwork)
+library(readxl)
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+library(viridis)
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+```
+
+```{r importing redcap study id}
+#importing redcap study id
+
+timby_redcap_study_id = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_study_id.xlsx") |> 
+  
+  rename(juvenileid = djj_id_6digit) 
+
+print(timby_redcap_study_id)
+#view(timby_study_id)
+
+```
+
+```{r importing redcap survey responses}
+#importing redcap survey responses
+
+timby_redcap_survey_responses = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_survey_responses.xlsx") |> 
+  
+  clean_names() |> 
+  
+  mutate(survey_stage = to_snake_case(as.character(survey_stage)))
+
+#how do you want to mutate the survey response answers? 
+
+print(timby_redcap_survey_responses)
+#view(timby_redcap_survey_responses)
+
+```
+
+```{r importing redcap demographics}
+#importing redcap demographics
+
+timby_redcap_demographics = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_demographics.xlsx") |> 
+  
+  clean_names() |> 
+  
+  rename(juvenileid = six_digit_djj_id)
+
+print(timby_redcap_demographics)
+#view(timby_redcap_demographics)
+
+```
+
+```{r importing ehr juvenile general information}
+#importing ehr juvenile general information
+
+timby_ehr_juvenile_general_information = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 1) |> 
+  
+  clean_names() |> 
+  
+  mutate(service_provider = to_snake_case(as.character(service_provider))) |>  
+  
+  mutate(placement = to_snake_case(as.character(placement))) |> 
+  
+  separate(placement, into = c("location", "facility_type")) |> 
+  
+  select(-pde_completed_date_time)
+  
+
+print(timby_ehr_juvenile_general_information)
+#view(timby_ehr_juvenile_general_information)
+
+```
+
+```{r importing ehr dsm dx}
+#importing ehr dsm dx
+
+timby_ehr_dsm_dx = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 2) |> 
+  
+  clean_names() |> 
+  
+  mutate(dsm_dx = to_snake_case(as.character(dsm_dx))) 
+  
+print(timby_ehr_dsm_dx)
+#view(timby_ehr_dsm_dx)
+```
+
+```{r importing ehr mse}
+#importing ehr mse
+
+timby_ehr_mse = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 3) |>
+  
+  clean_names() |> 
+  
+  rename(appearance = mse_behavior_appearance, 
+         age_representation = mse_behavior_actual_and_apparent_age,
+         grooming = mse_behavior_grooming,
+         hygiene = mse_behavior_hygiene, 
+         demeanor = mse_behavior_demeanor,
+         behavorial_observations = mse_behavior_behavioral_observations,
+         attention = mse_sensorium_and_cognition_attention,
+         concentration = mse_sensorium_and_cognition_concentration,
+         orientation = mse_sensorium_and_cognition_orientation,
+         memory = mse_sensorium_and_cognition_memory,
+         vocabulary = mse_sensorium_and_cognition_vocabulary,
+         comprehension = mse_sensorium_and_cognition_comprehension,
+         knowledge = mse_sensorium_and_cognition_knowledge, 
+         capacity_for_abstract_thinking = mse_sensorium_and_cognition_capacity_for_abstract_thinking,
+         emotional_state = mse_emotional_state_affect, 
+         emotional_range = mse_emotional_state_range_or_variability, 
+         appropriateness_to_content_and_situation = mse_emotional_state_appropriateness_to_content_and_situation, 
+         mood = mse_emotional_state_mood,
+         hallucinations = mse_perception_hallucinations, 
+         illusions = mse_perception_illusions, 
+         reality_testing = mse_perception_reality_testing, 
+         disturbance_of_consciousness = mse_perception_disturbance_of_consciousness,
+         qmhp_comments = mse_perception_comments,
+         speech = mse_thinking_speech,
+         thought_process = mse_thinking_thought_process, 
+         delusions = mse_thinking_thought_contents_delusions,
+         preoccupations_intrusive_thoughts_and_overvalued_ideas = mse_thinking_thought_contents_preoccupations_intrusive_thoughts_and_overvalued_ideas,
+         obsessions = mse_thinking_thought_contents_obsessions, 
+         phobias = mse_thinking_thought_contents_phobias,  
+         suicide = mse_thinking_thoughts_of_harm_to_self_or_others_suicide,
+         self_harm = mse_thinking_thoughts_of_harm_to_self_or_others_self_harm,
+         harm_to_others = mse_thinking_thoughts_of_harm_to_self_or_others_harm_to_others, 
+         insights = mse_thinking_insight_and_judegment_insight, 
+         judgements = mse_thinking_insight_and_judegment_judgement
+         ) |> 
+  
+  separate(appearance, into = c("age", "year", "old", "race", "sex")) |> 
+  
+  select(-year, -old) |> 
+  
+  mutate(race = to_snake_case(as.character(race)),
+         sex = to_snake_case(as.character(sex)),
+         age_representation = to_snake_case(as.character(age_representation)),
+         grooming = to_snake_case(as.character(grooming)), 
+         hygiene = to_snake_case(as.character(hygiene)), 
+         demeanor = to_snake_case(as.character(demeanor)), 
+         behavorial_observations = to_snake_case(as.character(behavorial_observations)), 
+         attention = to_snake_case(as.character(attention)), 
+         concentration = to_snake_case(as.character(concentration)),
+         orientation = to_snake_case(as.character(orientation)),
+         memory = to_snake_case(as.character(memory)), 
+         vocabulary = to_snake_case(as.character(vocabulary)), 
+         comprehension = to_snake_case(as.character(comprehension)),
+         knowledge = to_snake_case(as.character(knowledge)),
+         capacity_for_abstract_thinking = to_snake_case(as.character(capacity_for_abstract_thinking)),
+         emotional_state = to_snake_case(as.character(emotional_state)), 
+         emotional_range = to_snake_case(as.character(emotional_range)),
+         appropriateness_to_content_and_situation = to_snake_case(as.character(appropriateness_to_content_and_situation)), 
+         mood = to_snake_case(as.character(mood)), 
+         hallucinations = to_snake_case(as.character(hallucinations)),
+         illusions = to_snake_case(as.character(illusions)), 
+         reality_testing = to_snake_case(as.character(reality_testing)), 
+         disturbance_of_consciousness = to_snake_case(as.character(disturbance_of_consciousness)), 
+         qmhp_comments = to_snake_case(as.character(qmhp_comments)), 
+         speech = to_snake_case(as.character(speech)), 
+         thought_process = to_snake_case(as.character(thought_process)), 
+         delusions = to_snake_case(as.character(delusions)), 
+         preoccupations_intrusive_thoughts_and_overvalued_ideas = to_snake_case(as.character(preoccupations_intrusive_thoughts_and_overvalued_ideas)), 
+         obsessions = to_snake_case(as.character(obsessions)), 
+         phobias = to_snake_case(as.character(phobias)),
+         suicide = to_snake_case(as.character(suicide)), 
+         self_harm = to_snake_case(as.character(self_harm)), 
+         harm_to_others = to_snake_case(as.character(harm_to_others)),
+         insights = to_snake_case(as.character(insights)), 
+         judgements = to_snake_case(as.character(judgements))
+         ) |>
+  
+  separate(demeanor, into = c("demeanor_first_observation", "demeanor_second_observation")) |> 
+  
+  separate(behavorial_observations, into = c("behavioral_observations_first_observation", "behavioral_observations_second_observation", "behavioral_observations_third_observation")) |> 
+  
+  separate(emotional_state, into = c("emotional_state_first_observation", "emotional_state_second_observation")) |> 
+  
+  separate(mood, into = c("mood_first_observation", "mood_second_observation")) |> 
+  
+  separate(illusions, into = c("illusions_first_observation", "illusions_second_observation")) |> 
+  
+  separate(thought_process, into = c("thought_process_first_observation", "thought_process_second_observation")) |> 
+  
+  mutate(delusions = recode(delusions, "i_no_delusions" = "no"),
+         preoccupations_intrusive_thoughts_and_overvalued_ideas = recode(preoccupations_intrusive_thoughts_and_overvalued_ideas, "ii_no_preoccupations_intrusive_thoughts_and_overvalued_ideas" = "no", "ii_yes_preoccupations_intrusive_thoughts_and_overvalued_ideas_may_have_some_that_he_s_unwilling_to_talk_about" = "yes"), 
+         obsessions = recode(obsessions, "iii_no_obsessions" = "no"),
+         phobias = recode(phobias, "iv_no_phobias" = "no"), 
+         suicide = recode(suicide, "no_suicide" = "no"), 
+         self_harm = recode(self_harm, "no_self_harm_non_suicidal" = "no",
+                            "yes_self_harm_non_suicidal" = "yes"),
+         harm_to_others = recode(harm_to_others, "no_harm_to_others" = "no")
+         )
+
+print(timby_ehr_mse)
+#view(timby_ehr_mse)
+
+```
+
+```{r importing ehr medication}
+#importing medication
+
+timby_ehr_medication = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 4) |>
+  
+  clean_names() |> 
+  
+  mutate(psychotropic_medication = to_snake_case(as.character(psychotropic_medication)),
+         target_symptom = to_snake_case(as.character(target_symptom)),
+         dose_and_comments = to_snake_case(as.character(dose_and_comments)) 
+         ) |> 
+  
+  mutate(psychotropic_medication = recode(psychotropic_medication, 
+                                          "guanfacine_er_intuniv" = "guanfacineer_intuniv",
+                                          "methylphenadate_hcl_concerta" = "methylphenadatehcl_concerta",
+                                          "amphetamine_salts_adderallxr" = "amphetaminesalts_adderallxr")) |> 
+  
+  separate(psychotropic_medication, into = c("psychotropic_medication_generic", "psychotropic_medication_brand")) |> 
+  
+  mutate(psychotropic_medication_generic = recode(psychotropic_medication_generic, 
+                                          "guanfacineer" = "guanfacine_er",
+                                          "methylphenadatehcl" = "methylphenadate_hcl",
+                                          "amphetaminesalts" = "amphetamine_salts")) |> 
+  
+  mutate(psychotropic_medication_brand = recode(psychotropic_medication_brand, 
+                                          "adderallxr" = "adderall_xr"))
+  
+
+print(timby_ehr_medication)
+#view(timby_ehr_medication)
+
+```
+
+```{r importing ehr substance abuse}
+#importing ehr substance abuse
+
+timby_ehr_substance_abuse = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 5) |> 
+  
+  clean_names() |> 
+  
+  mutate(substance_abuse_use_history = to_snake_case(as.character(substance_abuse_use_history))
+         ) 
+
+print(timby_ehr_substance_abuse)
+#view(timby_ehr_substance_abuse)
+
+```
+
+```{r importing ehr non-psych medical hx}
+#importing ehr non-psych medical hx
+
+timby_ehr_non_psych_medical_hx = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 6) |>
+  
+  clean_names() |> 
+  
+  mutate(non_psychiatric_medical_history = to_snake_case(as.character(non_psychiatric_medical_history))
+         )
+
+print(timby_ehr_non_psych_medical_hx)
+#view(timby_ehr_non_psych_medical_hx)
+
+```
+
+```{r importing ehr yoga}
+#importing ehr yoga
+
+timby_ehr_yoga = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 7) |>
+  
+  clean_names() 
+
+print(timby_ehr_yoga)
+#view(timby_ehr_yoga)
+
+```
+
+```{r importing ehr criminal charges}
+#importing ehr criminal charges 
+
+timby_ehr_criminal_charges = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 8) |>
+  
+  clean_names() |> 
+  
+  mutate(criminal_charges = to_snake_case(as.character(criminal_charges)))
+
+print(timby_ehr_criminal_charges)
+#view(timby_ehr_criminal_charges)
+
+```
+
+```{r importing ehr incidents}
+#importing ehr incidents
+
+timby_ehr_incidents = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 9) |>
+  
+  clean_names() |> 
+  
+  mutate(incident_site_name = to_snake_case(as.character(incident_site_name))) |> 
+  
+  mutate(incident_site_type = to_snake_case(as.character(incident_site_type))) |>
+  
+  mutate(incident_involvement_type = to_snake_case(as.character(incident_involvement_type))) |>
+  
+  separate(incident_site_name, into = c("incident_site", "site_type")) |> 
+  
+  select(-site_type) |> 
+  
+  rename(juvenileid = juvenile_id) |> 
+  
+  separate(incident_code, into = c("incident_code_one", "incident_code_two", "incident_code_three", "incident_code_four", "incident_code_five", "incident_code_six","incident_code_seven", "incident_code_eight", "incident_code_nine", "incident_code_ten")) 
+
+print(timby_ehr_incidents)
+#view(timby_ehr_incidents)
+
+```
+
+```{r importing ehr group training counseling}
+#importing ehr group training counseling
+
+timby_ehr_group_training_counseling = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 10) |>
+  
+  clean_names() |> 
+  
+  mutate(group_training_counseling = to_snake_case(as.character(group_training_counseling)))
+
+print(timby_ehr_group_training_counseling)
+#view(timby_ehr_group_training_counseling)
+
+```
+
+```{r importing ehr individual training counseling}
+#importing ehr individual training counseling
+
+timby_ehr_individual_training_counseling = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 11) |>
+  
+  clean_names() |> 
+  
+  mutate(individual_counseling = to_snake_case(as.character(individual_counseling)))
+
+print(timby_ehr_individual_training_counseling)
+#view(timby_ehr_individual_training_counseling)
+
+```
+
+```{r buliding full ehr}
+#buliding full ehr df
+
+timby_ehr_jgi_dsm = left_join(timby_ehr_juvenile_general_information, 
+                           timby_ehr_dsm_dx
+                           ) 
+
+#print(timby_ehr_jgi_dsm)
+
+timby_ehr_jgi_dsm_mse = left_join(timby_ehr_jgi_dsm,
+                                  timby_ehr_mse
+                                  )
+
+#print(timby_ehr_jgi_dsm_mse)
+
+timby_ehr_jgi_dsm_mse_medication = left_join(timby_ehr_jgi_dsm_mse,
+                                             timby_ehr_medication
+                                             )
+
+#print(timby_ehr_jgi_dsm_mse_medication)
+
+timby_ehr_jgi_dsm_mse_medication_substance = left_join(timby_ehr_jgi_dsm_mse_medication,
+                                                       timby_ehr_substance_abuse
+                                                       )
+
+#print(timby_ehr_jgi_dsm_mse_medication_substance)
+
+timby_ehr_jgi_dsm_mse_medication_substance_nonpsych = left_join(timby_ehr_jgi_dsm_mse_medication_substance, 
+                                                                timby_ehr_non_psych_medical_hx) 
+
+#print(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych)
+
+timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga = left_join(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych, 
+                                                                     timby_ehr_yoga)
+
+#print(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga)
+
+timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal = left_join(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga, 
+                                                                     timby_ehr_criminal_charges)
+
+#print(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal)
+
+timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal_incidents = left_join(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal, 
+                                                                     timby_ehr_incidents)
+
+#print(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal_incidents)
+
+#timby_ehr_individual_training_counseling
+
+timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal_incidents_group = left_join(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal_incidents, 
+                                                                     timby_ehr_group_training_counseling)
+
+#print(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal_incidents_group)
+
+timby_ehr_full = left_join(timby_ehr_jgi_dsm_mse_medication_substance_nonpsych_yoga_criminal_incidents_group, 
+                                                    timby_ehr_individual_training_counseling)
+
+print(timby_ehr_full)
+
+```
+
+```{r buliding full timby df}
+#buliding full timby df
+
+timby_study_id_demo = left_join(timby_redcap_study_id,
+                                timby_redcap_demographics
+                                ) 
+
+#print(timby_study_id_demo)
+
+timby_study_id_demo_survey = left_join(timby_study_id_demo, 
+                                       timby_redcap_survey_responses
+                                       )
+
+#print(timby_study_id_demo_survey)
+
+timby_full = left_join(timby_study_id_demo_survey,
+                       timby_ehr_full
+                       )
+
+print(timby_full)
+#view(timby_full)
+
+```
+
