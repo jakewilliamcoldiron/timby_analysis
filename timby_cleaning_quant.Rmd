@@ -1,5 +1,5 @@
 ---
-title: "TIMBY Cleaning and EDA"
+title: "TIMBY Cleaning and EDA, Full"
 author: "Jake William Coldiron"
 output: pdf_document
 date: 22 July 2024
@@ -52,6 +52,26 @@ print(timby_redcap_study_id)
 
 ```
 
+```{r}
+timby_redcap_survey_responses_sep_test = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_survey_responses.xlsx") |> 
+  
+  clean_names() |> 
+  
+  mutate(survey_stage = to_snake_case(as.character(survey_stage))) |>
+  separate(tcs_1_how_often_would_you_make_the_following_statement_i_have_a_hard_time_sitting_still_choose_one, into = c("tcs_1"), extra = "drop") |> 
+  mutate(tcs_1 = recode(tcs_1, 
+                        "A" = as.numeric(0),
+                        "B" = as.numeric(1), 
+                        "C" = as.numeric(2),
+                        "D" = as.numeric(3),
+                        "E" = as.numeric(4)
+                        )) 
+
+print(timby_redcap_survey_responses_sep_test)
+
+```
+
+
 ```{r importing redcap survey responses}
 #importing redcap survey responses
 
@@ -59,9 +79,248 @@ timby_redcap_survey_responses = read_xlsx("./timby_analysis_data/timby_analysis_
   
   clean_names() |> 
   
-  mutate(survey_stage = to_snake_case(as.character(survey_stage)))
-
-#how do you want to mutate the survey response answers? 
+  mutate(survey_stage = to_snake_case(as.character(survey_stage))) |>
+  separate(tcs_1_how_often_would_you_make_the_following_statement_i_have_a_hard_time_sitting_still_choose_one, into = c("tcs_1"), extra = "drop") |> 
+  mutate(tcs_1 = recode(tcs_1, 
+                        "A" = as.numeric(0),
+                        "B" = as.numeric(1), 
+                        "C" = as.numeric(2),
+                        "D" = as.numeric(3),
+                        "E" = as.numeric(4)
+                        )) |> 
+  
+  separate(tcs_2_how_often_would_you_make_the_following_statement_i_start_things_but_have_a_hard_time_finishing_them_choose_one, into = c("tcs_2"), extra = "drop") |> 
+  mutate(tcs_2 = recode(tcs_2, 
+                        "A" = as.numeric(0),
+                        "B" = as.numeric(1), 
+                        "C" = as.numeric(2),
+                        "D" = as.numeric(3),
+                        "E" = as.numeric(4)
+                        )) |> 
+  
+  separate(tcs_3_how_often_would_you_make_the_following_statement_i_do_things_without_thinking_choose_one, into = c("tcs_3"), extra = "drop") |> 
+  mutate(tcs_3 = recode(tcs_3, 
+                        "A" = as.numeric(0),
+                        "B" = as.numeric(1), 
+                        "C" = as.numeric(2),
+                        "D" = as.numeric(3),
+                        "E" = as.numeric(4)
+                        )) |> 
+  
+  separate(tcs_4_how_often_would_you_make_the_following_statement_i_need_to_use_a_lot_of_self_control_to_keep_out_of_trouble_choose_one, into = c("tcs_4"), extra = "drop") |> 
+  mutate(tcs_4 = recode(tcs_4, 
+                        "A" = as.numeric(0),
+                        "B" = as.numeric(1), 
+                        "C" = as.numeric(2),
+                        "D" = as.numeric(3),
+                        "E" = as.numeric(4)
+                        )) |>
+  
+  separate(sdq_1_i_try_to_be_nice_to_other_people_i_care_about_their_feelings_choose_one, into = c("sdq_ps_1"), extra = "drop") |> 
+  mutate(sdq_ps_1 = recode(sdq_ps_1, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_2_i_am_restless_i_can_not_stay_still_for_long_choose_one, into = c("sdq_hs_2"), extra = "drop") |> 
+  mutate(sdq_hs_2 = recode(sdq_hs_2, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_ 
+                        )) |> 
+  
+  separate(sdq_3_i_get_a_lot_of_headaches_stomach_aches_or_sickness_choose_one, into = c("sdq_ess_3"), extra = "drop") |> 
+  mutate(sdq_ess_3 = recode(sdq_ess_3, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_4_i_usually_share_with_others_food_games_pens_etc_choose_one, into = c("sdq_ps_4"), extra = "drop") |> 
+  mutate(sdq_ps_4 = recode(sdq_ps_4, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_5_i_get_very_angry_and_often_lose_my_temper_choose_one, into = c("sdq_cds_5"), extra = "drop") |>  
+  mutate(sdq_cds_5 = recode(sdq_cds_5, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_6_i_am_usually_on_my_own_i_generally_play_alone_or_keep_to_myself_choose_one, into = c("sdq_pps_6"), extra = "drop") |>  
+  mutate(sdq_pps_6 = recode(sdq_pps_6, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_7_i_usually_do_as_i_am_told_choose_one, into = c("sdq_cds_7"), extra = "drop") |> 
+  #inverted scoring, see sdq documentation
+  mutate(sdq_cds_7 = recode(sdq_cds_7, 
+                        "Not" = as.numeric(2),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_8_i_worry_a_lot_choose_one, into = c("sdq_ess_8"), extra = "drop") |>  
+  mutate(sdq_ess_8 = recode(sdq_ess_8, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_9_i_am_helpful_if_someone_is_hurt_upset_or_feeling_ill_choose_one, into = c("sdq_ps_9"), extra = "drop") |>  
+  mutate(sdq_ps_9 = recode(sdq_ps_9, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_10_i_am_constantly_fidgeting_or_squirming_choose_one, into = c("sdq_hs_10"), extra = "drop") |> 
+  mutate(sdq_hs_10 = recode(sdq_hs_10, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_11_i_have_one_good_friend_or_more_choose_one, into = c("sdq_pps_11"), extra = "drop") |> 
+  #inverted scoring, see sdq documentation
+  mutate(sdq_pps_11 = recode(sdq_pps_11, 
+                        "Not" = as.numeric(2),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_12_i_fight_a_lot_i_can_make_other_people_do_what_i_want_choose_one, into = c("sdq_cds_12"), extra = "drop") |> 
+  mutate(sdq_cds_12 = recode(sdq_cds_12, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_13_i_am_often_unhappy_down_hearted_or_tearful_choose_one, into = c("sdq_ess_13"), extra = "drop") |> 
+  mutate(sdq_ess_13 = recode(sdq_ess_13, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_14_other_people_my_age_generally_like_me_choose_one, into = c("sdq_pps_14"), extra = "drop") |> 
+  #inverted scoring, see sdq documentation
+  mutate(sdq_pps_14 = recode(sdq_pps_14, 
+                        "Not" = as.numeric(2),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_15_i_am_easily_distracted_i_find_it_difficult_to_concentrate_choose_one, into = c("sdq_hs_15"), extra = "drop") |> 
+  mutate(sdq_hs_15 = recode(sdq_hs_15, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_16_i_am_nervous_in_new_situations_i_easily_lose_confidence_choose_one, into = c("sdq_ess_16"), extra = "drop") |>  
+  mutate(sdq_ess_16 = recode(sdq_ess_16, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_17_i_am_kind_to_younger_children_choose_one, into = c("sdq_ps_17"), extra = "drop") |> 
+  mutate(sdq_ps_17 = recode(sdq_ps_17, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_18_i_am_often_accused_of_lying_or_cheating_choose_one, into = c("sdq_cds_18"), extra = "drop") |>  
+  mutate(sdq_cds_18 = recode(sdq_cds_18, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_19_other_children_or_young_people_pick_on_me_or_bully_me_choose_one, into = c("sdq_pps_19"), extra = "drop") |> 
+  mutate(sdq_pps_19 = recode(sdq_pps_19, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_20_i_often_volunteer_to_help_others_parents_teachers_children_choose_one, into = c("sdq_ps_20"), extra = "drop") |> 
+  mutate(sdq_ps_20 = recode(sdq_ps_20, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_21_i_think_before_i_do_things_choose_one, into = c("sdq_hs_21"), extra = "drop") |>
+  #inverted scoring, see sdq documentation
+  mutate(sdq_hs_21 = recode(sdq_hs_21, 
+                        "Not" = as.numeric(2),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_22_i_take_things_that_are_not_mine_from_home_school_or_elsewhere_choose_one, into = c("sdq_cds_22"), extra = "drop") |> 
+  #inverted scoring, see sdq documentation
+  mutate(sdq_cds_22 = recode(sdq_cds_22, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_23_i_get_on_better_with_adults_than_with_people_my_own_age_choose_one, into = c("sdq_pps_23"), extra = "drop") |> 
+  mutate(sdq_pps_23 = recode(sdq_pps_23, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |>
+  
+  separate(sdq_24_i_have_many_fears_i_am_easily_scared_choose_one, into = c("sdq_ess_24"), extra = "drop") |> 
+  mutate(sdq_ess_24 = recode(sdq_ess_24, 
+                        "Not" = as.numeric(0),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(2),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_25_i_finish_the_work_im_doing_my_attention_is_good_choose_one, into = c("sdq_25"), extra = "drop") |> 
+  #inverted scoring, see sdq documentation
+  mutate(sdq_25 = recode(sdq_25, 
+                        "Not" = as.numeric(2),
+                        "Somewhat" = as.numeric(1), 
+                        "Certainly" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) 
 
 print(timby_redcap_survey_responses)
 #view(timby_redcap_survey_responses)
@@ -454,4 +713,3 @@ print(timby_full)
 #view(timby_full)
 
 ```
-
