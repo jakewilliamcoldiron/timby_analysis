@@ -10,7 +10,7 @@ date: 22 July 2024
 library(tidyverse)
 library(ggplot2)
 library(nlme)
-library (lattice)
+library(lattice)
 library(lme4)
 library(janitor)
 library(snakecase)
@@ -40,42 +40,22 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ```
 
-```{r importing redcap study id}
-#importing redcap study id
+```{r importing and cleaning redcap study id}
+#importing and cleaning redcap study id
 
 timby_redcap_study_id = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_study_id.xlsx") |> 
   
   rename(juvenileid = djj_id_6digit) 
 
-print(timby_redcap_study_id)
+#print(timby_redcap_study_id)
 #view(timby_study_id)
 
 ```
 
-```{r}
-timby_redcap_survey_responses_sep_test = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_survey_responses.xlsx") |> 
-  
-  clean_names() |> 
-  
-  mutate(survey_stage = to_snake_case(as.character(survey_stage))) |>
-  separate(tcs_1_how_often_would_you_make_the_following_statement_i_have_a_hard_time_sitting_still_choose_one, into = c("tcs_1"), extra = "drop") |> 
-  mutate(tcs_1 = recode(tcs_1, 
-                        "A" = as.numeric(0),
-                        "B" = as.numeric(1), 
-                        "C" = as.numeric(2),
-                        "D" = as.numeric(3),
-                        "E" = as.numeric(4)
-                        )) 
+```{r importing and cleaning redcap survey responses, tcs}
+#importing and cleaning redcap survey responses, tcs
 
-print(timby_redcap_survey_responses_sep_test)
-
-```
-
-
-```{r importing redcap survey responses}
-#importing redcap survey responses
-
-timby_redcap_survey_responses = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_survey_responses.xlsx") |> 
+timby_redcap_survey_responses_tcs = read_xlsx("./timby_analysis_data/timby_analysis_data_redcap_survey_responses.xlsx") |> 
   
   clean_names() |> 
   
@@ -114,8 +94,20 @@ timby_redcap_survey_responses = read_xlsx("./timby_analysis_data/timby_analysis_
                         "C" = as.numeric(2),
                         "D" = as.numeric(3),
                         "E" = as.numeric(4)
-                        )) |>
+                        )) |> 
   
+  mutate(tcs_score_numeric = tcs_1 + tcs_2 + tcs_3 + tcs_4)
+
+#print(timby_redcap_survey_responses_tcs)
+#view(timby_redcap_survey_responses_tcs)
+
+```
+
+```{r importing and cleaning redcap survey responses, sdq}
+#importing and cleaning redcap survey responses, sdq
+
+timby_redcap_survey_responses_tcs_sdq = timby_redcap_survey_responses_tcs |> 
+
   separate(sdq_1_i_try_to_be_nice_to_other_people_i_care_about_their_feelings_choose_one, into = c("sdq_ps_1"), extra = "drop") |> 
   mutate(sdq_ps_1 = recode(sdq_ps_1, 
                         "Not" = as.numeric(0),
@@ -313,17 +305,1026 @@ timby_redcap_survey_responses = read_xlsx("./timby_analysis_data/timby_analysis_
                         "Prefer" = NA_real_
                         )) |> 
   
-  separate(sdq_25_i_finish_the_work_im_doing_my_attention_is_good_choose_one, into = c("sdq_25"), extra = "drop") |> 
+  separate(sdq_25_i_finish_the_work_im_doing_my_attention_is_good_choose_one, into = c("sdq_hs_25"), extra = "drop") |> 
   #inverted scoring, see sdq documentation
-  mutate(sdq_25 = recode(sdq_25, 
+  mutate(sdq_hs_25 = recode(sdq_hs_25, 
                         "Not" = as.numeric(2),
                         "Somewhat" = as.numeric(1), 
                         "Certainly" = as.numeric(0),
                         "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(sdq_26_overall_do_you_think_that_you_have_difficulties_in_one_or_more_of_the_following_areas_emotions_concentration_behavior_or_being_able_to_get_along_with_other_people_choose_one, into = c("sdq_26", "sdq_26_qualifier"), extra = "drop")  |> 
+  mutate(sdq_26 = paste(sdq_26, sdq_26_qualifier, sep = "")) |> 
+  select(-sdq_26_qualifier) |>
+  mutate(sdq_26 = recode(sdq_26, 
+                        "NoNA" = as.numeric(0),
+                        "YesMinor" = as.numeric(1), 
+                        "YesDefinite" = as.numeric(2),
+                        "YesSevere" = as.numeric(3),
+                        "Prefernot" = NA_real_
+                        )) |>
+  
+  #if need to use qual values
+  #mutate(sdq_26 = recode(sdq_26, 
+                        #"NoNA" = as.character("No"),
+                        #"YesMinor" = as.character("Minor"), 
+                        #"YesDefinite" = as.character("Definite"),
+                        #"YesSevere" = as.character("Severe"),
+                        #"Prefernot" = NA_character_
+                        #)) |> 
+
+  rename(sdq_27 = sdq_27_how_long_have_difficulties_been_present_choose_one) |> 
+  mutate(sdq_27 = ifelse(is.na(sdq_27), "Did Not Answer sdq_26", sdq_27)) |> 
+  mutate(sdq_27 = recode(sdq_27, 
+                        "Less than a month" = as.character("<1"),
+                        "1-5 months" = as.character("1-5"), 
+                        "6-12 months" = as.character("6-12"),
+                        "Over a year" = as.character(">12"),
+                        "Prefer not to answer" = NA_character_,
+                        )) |> 
+  
+  rename(sdq_28 = sdq_28_do_the_difficulties_upset_or_distress_you_choose_one) |>
+  #mutate(sdq_28 = ifelse(is.na(sdq_28), "Did Not Answer sdq_26", sdq_28)) |>
+  mutate(sdq_28 = recode(sdq_28, 
+                         "Not at all" = as.numeric(0),
+                         "Only a little" = as.numeric(0), 
+                         "Quite a lot" = as.numeric(1),
+                         "A great deal" = as.numeric(2),
+                         "Prefer not to answer" = NA_real_
+                         )) |> 
+  
+  #if need to use qual values, copy for other questions 
+  #separate(sdq_29_do_the_difficulties_interfere_with_your_everyday_life_at_home_choose_one, into = c("sdq_29", "sdq_29_qualifier"), extra = "drop")  |> 
+  #mutate(sdq_29 = paste(sdq_29, sdq_29_qualifier, sep = "")) |> 
+  #select(-sdq_29_qualifier) |>
+  #mutate(sdq_29 = recode(sdq_29, 
+                        #"NANA" = as.character("Did Not Answer sdq_26"),
+                        #"NoNA" = as.character("No"),
+                        #"YesMinor" = as.character("Minor"), 
+                        #"YesDefinite" = as.character("Definite"),
+                        #"YesSevere" = as.character("Severe"),
+                        #"Prefernot" = NA_character_
+                        #)) |> 
+  
+  separate(sdq_29_do_the_difficulties_interfere_with_your_everyday_life_at_home_choose_one, into = c("sdq_29", "sdq_29_qualifier"), extra = "drop")  |> 
+  mutate(sdq_29 = paste(sdq_29, sdq_29_qualifier, sep = "")) |> 
+  select(-sdq_29_qualifier) |>
+  mutate(sdq_29 = recode(sdq_29, 
+                        "NoNA" = as.numeric(0),
+                        "YesMinor" = as.numeric(0), 
+                        "YesDefinite" = as.numeric(1),
+                        "YesSevere" = as.numeric(2),
+                        "Prefernot" = NA_real_
+                        )) |> 
+  
+  separate(sdq_30_do_the_difficulties_interfere_with_your_everyday_life_in_friendships_choose_one, into = c("sdq_30", "sdq_30_qualifier"), extra = "drop")  |> 
+  mutate(sdq_30 = paste(sdq_30, sdq_30_qualifier, sep = "")) |> 
+  select(-sdq_30_qualifier) |>
+  mutate(sdq_30 = recode(sdq_30, 
+                        "NoNA" = as.numeric(0),
+                        "YesMinor" = as.numeric(0), 
+                        "YesDefinite" = as.numeric(1),
+                        "YesSevere" = as.numeric(2),
+                        "Prefernot" = NA_real_
+                        )) |> 
+  
+  separate(sdq_31_do_the_difficulties_interfere_with_your_everyday_life_in_classroom_learning_choose_one, into = c("sdq_31", "sdq_31_qualifier"), extra = "drop")  |> 
+  mutate(sdq_31 = paste(sdq_31, sdq_31_qualifier, sep = "")) |> 
+  select(-sdq_31_qualifier) |>
+  mutate(sdq_31 = recode(sdq_31, 
+                        "NoNA" = as.numeric(0),
+                        "YesMinor" = as.numeric(0), 
+                        "YesDefinite" = as.numeric(1),
+                        "YesSevere" = as.numeric(2),
+                        "Prefernot" = NA_real_
+                        )) |> 
+  
+  separate(sdq_32_do_the_difficulties_interfere_with_your_everyday_life_during_leisure_activities_choose_one, into = c("sdq_32", "sdq_32_qualifier"), extra = "drop")  |> 
+  mutate(sdq_32 = paste(sdq_32, sdq_32_qualifier, sep = "")) |> 
+  select(-sdq_32_qualifier) |>
+  mutate(sdq_32 = recode(sdq_32, 
+                        "NoNA" = as.numeric(0),
+                        "YesMinor" = as.numeric(0), 
+                        "YesDefinite" = as.numeric(1),
+                        "YesSevere" = as.numeric(2),
+                        "Prefernot" = NA_real_
+                        )) |> 
+  
+  separate(sdq_33_do_the_difficulties_make_it_harder_for_those_around_you_family_friends_teachers_etc_choose_one, into = c("sdq_33", "sdq_33_qualifier"), extra = "drop")  |> 
+  mutate(sdq_33 = paste(sdq_33, sdq_33_qualifier, sep = "")) |> 
+  select(-sdq_33_qualifier) |>
+  mutate(sdq_33 = recode(sdq_33, 
+                        "NoNA" = as.numeric(0),
+                        "YesMinor" = as.numeric(0), 
+                        "YesDefinite" = as.numeric(1),
+                        "YesSevere" = as.numeric(2),
+                        "Prefernot" = NA_real_
+                        ))
+
+
+
+#print(timby_redcap_survey_responses_tcs_sdq)
+#view(timby_redcap_survey_responses_tcs_sdq)
+
+```
+
+```{r importing and cleaning redcap survey responses, chs}
+#importing and cleaning redcap survey responses, chs
+
+timby_redcap_survey_responses_tcs_sdq_chs = timby_redcap_survey_responses_tcs_sdq |>
+  
+  separate(chs_1_i_think_i_am_doing_pretty_well_choose_one, into = c("chs_1", "chs_1_qualifier"), extra = "drop") |> 
+  mutate(chs_1 = paste(chs_1, chs_1_qualifier, sep = "")) |> 
+  select(-chs_1_qualifier) |> 
+  mutate(chs_1 = recode(chs_1,
+                        "Noneof" = as.numeric(0),
+                        "Alittle" = as.numeric(1),
+                        "Someof" = as.numeric(2),
+                        "Alot" = as.numeric(3),
+                        "Mostof" = as.numeric(4),
+                        "Allof" = as.numeric(5)
+                        )) |> 
+  
+  separate(chs_2_i_can_think_of_many_ways_to_get_things_in_life_that_are_most_important_to_me_choose_one, into = c("chs_2", "chs_2_qualifier"), extra = "drop") |> 
+  mutate(chs_2 = paste(chs_2, chs_2_qualifier, sep = "")) |> 
+  select(-chs_2_qualifier) |> 
+  mutate(chs_2 = recode(chs_2,
+                        "Noneof" = as.numeric(0),
+                        "Alittle" = as.numeric(1),
+                        "Someof" = as.numeric(2),
+                        "Alot" = as.numeric(3),
+                        "Mostof" = as.numeric(4),
+                        "Allof" = as.numeric(5)
+                        )) |> 
+  
+  separate(chs_3_i_am_doing_just_as_well_as_other_people_my_age_choose_one, into = c("chs_3", "chs_3_qualifier"), extra = "drop") |> 
+  mutate(chs_3 = paste(chs_3, chs_3_qualifier, sep = "")) |> 
+  select(-chs_3_qualifier) |> 
+  mutate(chs_3 = recode(chs_3,
+                        "Noneof" = as.numeric(0),
+                        "Alittle" = as.numeric(1),
+                        "Someof" = as.numeric(2),
+                        "Alot" = as.numeric(3),
+                        "Mostof" = as.numeric(4),
+                        "Allof" = as.numeric(5)
+                        )) |> 
+  
+  separate(chs_4_when_i_have_a_problem_i_can_come_up_with_lots_of_ways_to_solve_it_choose_one, into = c("chs_4", "chs_4_qualifier"), extra = "drop") |> 
+  mutate(chs_4 = paste(chs_4, chs_4_qualifier, sep = "")) |> 
+  select(-chs_4_qualifier) |> 
+  mutate(chs_4 = recode(chs_4,
+                        "Noneof" = as.numeric(0),
+                        "Alittle" = as.numeric(1),
+                        "Someof" = as.numeric(2),
+                        "Alot" = as.numeric(3),
+                        "Mostof" = as.numeric(4),
+                        "Allof" = as.numeric(5)
+                        )) |> 
+  
+  separate(chs_5_i_think_the_things_i_have_done_in_the_past_will_help_me_in_the_future_choose_one, into = c("chs_5", "chs_5_qualifier"), extra = "drop") |> 
+  mutate(chs_5 = paste(chs_5, chs_5_qualifier, sep = "")) |> 
+  select(-chs_5_qualifier) |> 
+  mutate(chs_5 = recode(chs_5,
+                        "Noneof" = as.numeric(0),
+                        "Alittle" = as.numeric(1),
+                        "Someof" = as.numeric(2),
+                        "Alot" = as.numeric(3),
+                        "Mostof" = as.numeric(4),
+                        "Allof" = as.numeric(5)
+                        )) |> 
+  
+  separate(chs_6_even_when_others_want_to_quit_i_know_that_i_can_find_ways_to_solve_the_problem_choose_one, into = c("chs_6", "chs_6_qualifier"), extra = "drop") |> 
+  mutate(chs_6 = paste(chs_6, chs_6_qualifier, sep = "")) |> 
+  select(-chs_6_qualifier) |> 
+  mutate(chs_6 = recode(chs_6,
+                        "Noneof" = as.numeric(0),
+                        "Alittle" = as.numeric(1),
+                        "Someof" = as.numeric(2),
+                        "Alot" = as.numeric(3),
+                        "Mostof" = as.numeric(4),
+                        "Allof" = as.numeric(5)
+                        ))
+
+#print(timby_redcap_survey_responses_tcs_sdq_chs)
+#view(timby_redcap_survey_responses_tcs_sdq_chs)
+
+```
+
+```{r importing and cleaning redcap survey responses, crops}
+#importing and cleaning redcap survey responses, crops
+
+timby_redcap_survey_responses_tcs_sdq_chs_crops = timby_redcap_survey_responses_tcs_sdq_chs |> 
+  
+  separate(crops_1_i_daydream_choose_one, into = c("crops_1"), extra = "drop") |> 
+  mutate(crops_1 = recode(crops_1,
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_2_i_space_out_when_people_are_talking_to_me_choose_one, into = c("crops_2"), extra = "drop") |> 
+  mutate(crops_2 = recode(crops_2, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_3_i_find_it_hard_to_concentrate_choose_one, into = c("crops_3"), extra = "drop") |> 
+  mutate(crops_3 = recode(crops_3, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_4_i_think_about_bad_things_that_have_happened_choose_one, into = c("crops_4"), extra = "drop") |> 
+  mutate(crops_4 = recode(crops_4, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_5_i_try_to_forget_about_bad_things_that_have_happened_choose_one, into = c("crops_5"), extra = "drop") |> 
+  mutate(crops_5 = recode(crops_5, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_6_i_avoid_reminders_of_bad_things_that_have_happened_choose_one, into = c("crops_6"), extra = "drop") |> 
+  mutate(crops_6 = recode(crops_6, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_7_i_worry_that_bad_things_will_happen_choose_one, into = c("crops_7"), extra = "drop") |> 
+  mutate(crops_7 = recode(crops_7, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_8_i_do_special_things_to_make_sure_nothing_bad_happens_choose_one, into = c("crops_8"), extra = "drop") |> 
+  mutate(crops_8 = recode(crops_8, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_9_i_do_some_things_that_im_probably_too_old_for_choose_one, into = c("crops_9"), extra = "drop") |> 
+  mutate(crops_9 = recode(crops_9, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |> 
+  
+  separate(crops_10_things_make_me_upset_or_mad_choose_one, into = c("crops_10"), extra = "drop") |> 
+  mutate(crops_10 = recode(crops_10, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_11_it_is_hard_for_me_to_go_to_sleep_at_night_choose_one, into = c("crops_11"), extra = "drop") |> 
+  mutate(crops_11 = recode(crops_11, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_12_i_have_bad_dreams_or_nightmares_choose_one, into = c("crops_12"), extra = "drop") |>
+  mutate(crops_12 = recode(crops_12, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_13_i_get_headaches_choose_one, into = c("crops_13"), extra = "drop") |>
+  mutate(crops_13 = recode(crops_13, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_14_i_get_stomach_aches_choose_one, into = c("crops_14"), extra = "drop") |>
+  mutate(crops_14 = recode(crops_14, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_15_i_feel_sick_or_have_pains_choose_one, into = c("crops_15"), extra = "drop") |>
+  mutate(crops_15 = recode(crops_15, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_16_i_feel_tired_or_low_energy_choose_one, into = c("crops_16"), extra = "drop") |>
+  mutate(crops_16 = recode(crops_16, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_17_i_feel_all_alone_choose_one, into = c("crops_17"), extra = "drop") |>
+  mutate(crops_17 = recode(crops_17, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_18_i_feel_strange_or_different_than_other_kids_choose_one, into = c("crops_18"), extra = "drop") |>
+  mutate(crops_18 = recode(crops_18, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_19_i_feel_like_theres_something_wrong_with_me_choose_one, into = c("crops_19"), extra = "drop") |>
+  mutate(crops_19 = recode(crops_19, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_20_i_feel_like_its_my_fault_when_bad_things_happen_choose_one, into = c("crops_20"), extra = "drop") |>
+  mutate(crops_20 = recode(crops_20, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_21_im_a_jinx_or_bad_luck_charm_choose_one, into = c("crops_21"), extra = "drop") |>
+  mutate(crops_21 = recode(crops_21, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_22_i_feel_sad_or_depressed_choose_one, into = c("crops_22"), extra = "drop") |>
+  mutate(crops_22 = recode(crops_22, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_23_i_dont_feel_like_doing_much_choose_one, into = c("crops_23"), extra = "drop") |>
+  mutate(crops_23 = recode(crops_23, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_24_my_future_looks_bad_choose_one, into = c("crops_24"), extra = "drop") |>
+  mutate(crops_24 = recode(crops_24, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_25_im_on_the_lookout_for_bad_things_that_might_happen_choose_one, into = c("crops_25"), extra = "drop") |>
+  mutate(crops_25 = recode(crops_25, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) |>
+  
+  separate(crops_26_i_am_nervous_or_jumpy_choose_one, into = c("crops_26"), extra = "drop") |>
+  mutate(crops_26 = recode(crops_26, 
+                          "None" = as.numeric(0),
+                          "Some" = as.numeric(1),
+                          "Lots" = as.numeric(2),
+                          "Prefer" = NA_real_
+                          )) 
+
+print(timby_redcap_survey_responses_tcs_sdq_chs_crops)
+#view(timby_redcap_survey_responses_tcs_sdq_chs_crops)
+
+```
+
+```{r importing and cleaning redcap survey responses, pss}
+#importing and cleaning redcap survey responses, pss
+
+timby_redcap_survey_responses_tcs_sdq_chs_crops_pss = timby_redcap_survey_responses_tcs_sdq_chs_crops |> 
+  
+  separate(pss_1_in_the_last_month_how_often_have_you_been_upset_because_of_something_that_happened_unexpectedly_choose_one, into = c("pss_1"), extra = "drop") |> 
+  mutate(pss_1 = recode(pss_1, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_2_in_the_last_month_how_often_have_you_felt_that_you_were_unable_to_control_the_important_things_in_your_life_choose_one, into = c("pss_2"), extra = "drop") |> 
+  mutate(pss_2 = recode(pss_2, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_3_in_the_last_month_how_often_have_you_felt_nervous_and_stressed_choose_one, into = c("pss_3"), extra = "drop") |> 
+  mutate(pss_3 = recode(pss_3, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_4_in_the_last_month_how_often_have_you_felt_confident_about_your_ability_to_handle_your_personal_problems_choose_one, into = c("pss_4"), extra = "drop") |> 
+  #invert score values
+  mutate(pss_4 = recode(pss_4, 
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_5_in_the_last_month_how_often_have_you_felt_that_things_were_going_your_way_choose_one, into = c("pss_5"), extra = "drop") |> 
+  #invert score values
+  mutate(pss_5 = recode(pss_5, 
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_6_in_the_last_month_how_often_have_you_found_that_you_could_not_cope_with_all_the_things_that_you_had_to_do_choose_one, into = c("pss_6"), extra = "drop") |> 
+  mutate(pss_6 = recode(pss_6, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_7_in_the_last_month_how_often_have_you_been_able_to_control_irritations_in_your_life_choose_one, into = c("pss_7"), extra = "drop") |> 
+  #invert score values
+  mutate(pss_7 = recode(pss_7, 
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_8_in_the_last_month_how_often_have_you_felt_that_you_were_on_top_of_things_choose_one, into = c("pss_8"), extra = "drop") |> 
+  #invert score values
+  mutate(pss_8 = recode(pss_8, 
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_9_in_the_last_month_how_often_have_you_been_angered_because_of_things_that_were_outside_of_your_control_choose_one, into = c("pss_9"), extra = "drop") |> 
+  mutate(pss_9 = recode(pss_9, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(pss_10_in_the_last_month_how_often_have_you_felt_difficulties_were_piling_up_so_high_that_you_could_not_overcome_them_choose_one, into = c("pss_10"), extra = "drop") |> 
+  mutate(pss_10 = recode(pss_10, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        ))
+
+#print(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss)
+#view(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss)
+
+```
+
+```{r importing and cleaning redcap survey responses, bc}
+#importing and cleaning redcap survey responses, bc
+
+timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc = timby_redcap_survey_responses_tcs_sdq_chs_crops_pss |> 
+  
+  separate(bc_1_ive_been_turning_to_work_or_other_activities_to_take_my_mind_off_of_things_choose_one, into = c("bc_ac_1"), extra = "drop") |> 
+  mutate(bc_ac_1 = recode(bc_ac_1, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_2_ive_been_concentrating_my_efforts_on_doing_something_about_the_situation_im_in_choose_one, into = c("bc_pfc_2"), extra = "drop") |> 
+  mutate(bc_pfc_2 = recode(bc_pfc_2, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_3_ive_been_saying_to_myself_this_isnt_real_choose_one, into = c("bc_ac_3"), extra = "drop") |> 
+  mutate(bc_ac_3 = recode(bc_ac_3, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_4_ive_been_using_alcohol_or_other_drugs_to_make_myself_feel_better_choose_one, into = c("bc_ac_4"), extra = "drop") |> 
+  mutate(bc_ac_4 = recode(bc_ac_4, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_5_ive_been_getting_emotional_support_from_others_choose_one, into = c("bc_efc_5"), extra = "drop") |> 
+  mutate(bc_efc_5 = recode(bc_efc_5, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_6_ive_been_giving_up_trying_to_deal_with_it_choose_one, into = c("bc_ac_6"), extra = "drop") |> 
+  mutate(bc_ac_6 = recode(bc_ac_6, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_7_ive_been_taking_action_to_try_to_make_the_situation_better_choose_one, into = c("bc_pfc_7"), extra = "drop") |> 
+  mutate(bc_pfc_7 = recode(bc_pfc_7, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_8_ive_been_refusing_to_believe_that_it_has_happened_choose_one , into = c("bc_ac_8"), extra = "drop") |> 
+  mutate(bc_ac_8 = recode(bc_ac_8, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_9_ive_been_saying_things_to_let_my_unpleasant_feelings_escape_choose_one , into = c("bc_efc_9"), extra = "drop") |> 
+  mutate(bc_efc_9 = recode(bc_efc_9, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_10_ive_been_getting_help_and_advice_from_other_people_choose_one
+, into = c("bc_pfc_10"), extra = "drop") |> 
+  mutate(bc_pfc_10 = recode(bc_pfc_10, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_11_ive_been_using_alcohol_or_other_drugs_to_help_me_get_through_it_choose_one, into = c("bc_ac_11"), extra = "drop") |> 
+  mutate(bc_ac_11 = recode(bc_ac_11, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_12_ive_been_trying_to_see_it_in_a_different_light_to_make_it_seem_more_positive_choose_one, into = c("bc_pfc_12"), extra = "drop") |> 
+  mutate(bc_pfc_12 = recode(bc_pfc_12, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_13_ive_been_criticizing_myself_choose_one, into = c("bc_efc_13"), extra = "drop") |> 
+  mutate(bc_efc_13 = recode(bc_efc_13, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |>  
+  
+  separate(bc_14_ive_been_trying_to_come_up_with_a_strategy_about_what_to_do_choose_one, into = c("bc_pfc_14"), extra = "drop") |> 
+  mutate(bc_pfc_14 = recode(bc_pfc_14, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |>  
+  
+  separate(bc_15_ive_been_getting_comfort_and_understanding_from_someone_choose_one, into = c("bc_efc_15"), extra = "drop") |> 
+  mutate(bc_efc_15 = recode(bc_efc_15, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_16_ive_been_giving_up_the_attempt_to_cope_choose_one, into = c("bc_ac_16"), extra = "drop") |> 
+  mutate(bc_ac_16 = recode(bc_ac_16, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_17_ive_been_looking_for_something_good_in_what_is_happening_choose_one, into = c("bc_pfc_17"), extra = "drop") |> 
+  mutate(bc_pfc_17 = recode(bc_pfc_17, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_18_ive_been_making_jokes_about_it_choose_one, into = c("bc_efc_18"), extra = "drop") |> 
+  mutate(bc_efc_18 = recode(bc_efc_18, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_19_ive_been_doing_something_to_think_about_it_less_such_as_going_to_movies_watching_tv_reading_daydreaming_sleeping_or_shopping_choose_one, into = c("bc_ac_19"), extra = "drop") |> 
+  mutate(bc_ac_19 = recode(bc_ac_19, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_20_ive_been_accepting_the_reality_of_the_fact_that_it_has_happened_choose_one, into = c("bc_efc_20"), extra = "drop") |> 
+  mutate(bc_efc_20 = recode(bc_efc_20, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_21_ive_been_expressing_my_negative_feelings_choose_one, into = c("bc_efc_21"), extra = "drop") |> 
+  mutate(bc_efc_21 = recode(bc_efc_21, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_22_ive_been_trying_to_find_comfort_in_my_religion_or_spiritual_beliefs_choose_one, into = c("bc_efc_22"), extra = "drop") |> 
+  mutate(bc_efc_22 = recode(bc_efc_22, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_23_ive_been_trying_to_get_advice_or_help_from_other_people_about_what_to_do_choose_one, into = c("bc_pfc_23"), extra = "drop") |> 
+  mutate(bc_pfc_23 = recode(bc_pfc_23, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_24_ive_been_learning_to_live_with_it_choose_one, into = c("bc_efc_24"), extra = "drop") |> 
+  mutate(bc_efc_24 = recode(bc_efc_24, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_25_ive_been_thinking_hard_about_what_steps_to_take_choose_one, into = c("bc_pfc_25"), extra = "drop") |> 
+  mutate(bc_pfc_25 = recode(bc_pfc_25, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_26_ive_been_blaming_myself_for_things_that_happened_choose_one, into = c("bc_efc_26"), extra = "drop") |> 
+  mutate(bc_efc_26 = recode(bc_efc_26, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_27_ive_been_praying_or_meditating_choose_one, into = c("bc_efc_27"), extra = "drop") |> 
+  mutate(bc_efc_27 = recode(bc_efc_27, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(bc_28_ive_been_making_fun_of_the_situation_choose_one, into = c("bc_efc_28"), extra = "drop") |> 
+  mutate(bc_efc_28 = recode(bc_efc_28, 
+                        "0" = as.numeric(0),
+                        "1" = as.numeric(1),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(3),
+                        "4" = as.numeric(4),
+                        "Prefer" = NA_real_
                         )) 
 
-print(timby_redcap_survey_responses)
-#view(timby_redcap_survey_responses)
+#print(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc)
+#view(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc)
+
+```
+
+```{r importing and cleaning redcap survey responses, camm}
+#importing and cleaning redcap survey responses, camm
+
+timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm = timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc |> 
+  
+  separate(camm_1_i_get_upset_with_myself_for_having_feelings_that_dont_make_sense_choose_one , into = c("camm_1"), extra = "drop") |> 
+  mutate(camm_1 = recode(camm_1,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_2_i_walk_from_place_to_place_without_noticing_what_im_doing_choose_one , into = c("camm_2"), extra = "drop") |> 
+  mutate(camm_2 = recode(camm_2,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_3_i_keep_myself_busy_so_i_dont_notice_my_thoughts_or_feelings_choose_one , into = c("camm_3"), extra = "drop") |> 
+  mutate(camm_3 = recode(camm_3,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_4_i_tell_myself_i_shouldnt_feel_the_way_im_feeling_choose_one, into = c("camm_4"), extra = "drop") |> 
+  mutate(camm_4 = recode(camm_4,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_5_i_push_away_thoughts_i_dont_like_choose_one, into = c("camm_5"), extra = "drop") |> 
+  mutate(camm_5 = recode(camm_5,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_6_its_hard_for_me_to_pay_attention_to_only_one_thing_at_a_time_choose_one , into = c("camm_6"), extra = "drop") |> 
+  mutate(camm_6 = recode(camm_6,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_7_i_get_upset_with_myself_for_having_certain_thoughts_choose_one , into = c("camm_7"), extra = "drop") |> 
+  mutate(camm_7 = recode(camm_7,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_8_i_think_about_things_that_have_happened_in_the_past_instead_of_thinking_about_things_that_are_happening_right_now_choose_one , into = c("camm_8"), extra = "drop") |> 
+  mutate(camm_8 = recode(camm_8,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_9_i_think_that_some_of_my_feelings_are_bad_and_that_i_shouldnt_have_them_choose_one , into = c("camm_9"), extra = "drop") |> 
+  mutate(camm_9 = recode(camm_9,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) |> 
+  
+  separate(camm_10_i_stop_myself_from_having_feelings_that_i_dont_like_choose_one , into = c("camm_10"), extra = "drop") |> 
+  mutate(camm_10 = recode(camm_10,
+                        "0" = as.numeric(4),
+                        "1" = as.numeric(3),
+                        "2" = as.numeric(2),
+                        "3" = as.numeric(1),
+                        "4" = as.numeric(0),
+                        "Prefer" = NA_real_
+                        )) 
+
+#print(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm)
+#view(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm)
+
+```
+
+```{r importing and cleaning redcap survey responses, meta}
+#importing and cleaning redcap survey responses, meta
+
+timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm_meta = timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm |> 
+  
+  separate(i_enjoyed_the_yoga_classes_choose_one, into = c("meta_1"), extra = "drop") |> 
+  mutate(meta_1 = recode(meta_1,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "4" = as.numeric(4), 
+                         "5" = as.numeric(5),
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  separate(the_yoga_classes_were_helpful_for_improving_my_mental_health_choose_one, into = c("meta_2"), extra = "drop") |> 
+  mutate(meta_2 = recode(meta_2,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "4" = as.numeric(4), 
+                         "5" = as.numeric(5),
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  separate(the_yoga_classes_were_helpful_for_improving_my_physical_health_choose_one, into = c("meta_3"), extra = "drop") |> 
+  mutate(meta_3 = recode(meta_3,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "4" = as.numeric(4), 
+                         "5" = as.numeric(5),
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  separate(i_plan_on_taking_yoga_classes_while_i_am_still_here_at_the_facility_choose_one, into = c("meta_4"), extra = "drop") |> 
+  mutate(meta_4 = recode(meta_4,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "4" = as.numeric(4), 
+                         "5" = as.numeric(5),
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  separate(i_plan_on_taking_yoga_classes_after_i_leave_the_facility_choose_one, into = c("meta_5"), extra = "drop") |> 
+  mutate(meta_5 = recode(meta_5,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "4" = as.numeric(4), 
+                         "5" = as.numeric(5),
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  separate(the_time_it_took_to_complete_the_survey_was_choose_one, into = c("meta_6"), extra = "drop") |> 
+  mutate(meta_6 = recode(meta_6,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  separate(the_difficulty_of_the_survey_questions_was_choose_one, into = c("meta_7"), extra = "drop") |> 
+  mutate(meta_7 = recode(meta_7,
+                         "1" = as.numeric(1), 
+                         "2" = as.numeric(2), 
+                         "3" = as.numeric(3), 
+                         "Prefer" = NA_real_
+                         )) |> 
+  
+  mutate(complete = to_snake_case(as.character(complete))) 
+
+print(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm_meta)
+#view(timby_redcap_survey_responses_tcs_sdq_chs_crops_pss_bc_camm_meta)
+
+```
+
+```{r creating score matrix}
+
+
 
 ```
 
@@ -341,7 +1342,7 @@ print(timby_redcap_demographics)
 
 ```
 
-```{r importing ehr juvenile general information}
+```{r importing and cleaning ehr, juvenile general information}
 #importing ehr juvenile general information
 
 timby_ehr_juvenile_general_information = read_xlsx("./timby_analysis_data/timby_analysis_data_ehr.xlsx", 1) |> 
